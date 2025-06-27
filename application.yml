@@ -1,0 +1,31 @@
+server:
+  port: 80
+  servlet:
+    context-path: /
+
+spring:
+  application:
+    name: acme-challenge-server
+
+# ACME 挑战配置
+acme:
+  challenge:
+    webroot: /tmp/webroot  # webroot 路径，与 acme.sh 的 -w 参数一致
+
+# 日志配置
+logging:
+  level:
+    com.example.acme: DEBUG
+    org.springframework.web: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# 管理端点配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always 

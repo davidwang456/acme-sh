@@ -1,0 +1,68 @@
+version: '3.8'
+
+services:
+  # step-ca 服务器
+  stepca:
+    image: smallstep/step-ca:latest
+    container_name: stepca
+    ports:
+      - "9000:9000"
+    environment:
+      - DOCKER_STEPCA_INIT_NAME=Smallstep
+      - DOCKER_STEPCA_INIT_DNS_NAMES=localhost,stepca.local
+      - DOCKER_STEPCA_INIT_REMOTE_MANAGEMENT=true
+      - DOCKER_STEPCA_INIT_PASSWORD=test
+    volumes:
+      - stepca-data:/home/step
+    restart: unless-stopped
+    networks:
+      - acme-network
+
+  # Spring Boot ACME 挑战服务器
+  acme-challenge-server:
+    build: .
+    container_name: acme-challenge-server
+    ports:
+      - "80:80"
+    volumes:
+      - webroot-data:/tmp/webroot
+    environment:
+      - acme.challenge.webroot=/tmp/webroot
+    depends_on:
+      - stepca
+    restart: unless-stopped
+    networks:
+      - acme-network
+
+  # acme.sh 客户端
+  acmesh:
+    image: neilpang/acme.sh:latest
+    container_name: acmesh
+    volumes:
+      - acme-data:/acme.sh
+      - webroot-data:/tmp/webroot
+      - ./stepca-root.crt:/stepca-root.crt
+    depends_on:
+      - stepca
+      - acme-challenge-server
+    environment:
+      - CA_PATH=/stepca-root.crt
+      - HTTPS_INSECURE=0
+    restart: unless-stopped
+    networks:
+      - acme-network
+    command: >
+      sh -c "
+        cp /stepca-root.crt /usr/local/share/ca-certificates/ &&
+        update-ca-certificates &&
+        echo 'ACME Challenge Server ready for certificate requests'
+      "
+
+volumes:
+  stepca-data:
+  acme-data:
+  webroot-data:
+
+networks:
+  acme-network:
+    driver: bridge 
