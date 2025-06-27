@@ -1,7 +1,5 @@
 package com.example.acme.controller;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -11,72 +9,70 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.Map;
 
 /**
- * ACME HTTP-01 验证挑战控制器
+ * ACME HTTP-01 Challenge Controller
  * 
- * 实现 RFC8555 标准的 HTTP-01 挑战验证
- * 路径: /.well-known/acme-challenge/{token}
- * 响应: token + "." + base64url(Thumbprint(accountKey))
+ * Implements RFC8555 standard HTTP-01 challenge validation
+ * Path: /.well-known/acme-challenge/{token}
+ * Response: token + "." + base64url(Thumbprint(accountKey))
  * 
- * 使用内存存储挑战响应，支持动态管理
+ * Uses in-memory storage for challenge responses with dynamic management
  */
 @RestController
 @RequestMapping("/.well-known/acme-challenge")
 public class AcmeChallengeController {
 
-    private static final Logger logger = LoggerFactory.getLogger(AcmeChallengeController.class);
-
-    // 内存存储挑战响应
+    // In-memory storage for challenge responses
     private final Map<String, String> challengeResponses = new ConcurrentHashMap<>();
     
-    // 挑战响应过期时间（毫秒）- 默认5分钟
+    // Challenge response expiry times (milliseconds) - default 5 minutes
     private final Map<String, Long> challengeExpiry = new ConcurrentHashMap<>();
     
     @Value("${acme.challenge.expiry:300000}")
     private long challengeExpiryMs;
 
     /**
-     * 处理 ACME HTTP-01 挑战请求
+     * Handle ACME HTTP-01 challenge request
      * 
-     * @param token 挑战令牌
-     * @return 挑战响应内容
+     * @param token Challenge token
+     * @return Challenge response content
      */
     @GetMapping(value = "/{token}", produces = MediaType.TEXT_PLAIN_VALUE)
     public ResponseEntity<String> handleAcmeChallenge(@PathVariable String token) {
-        logger.info("收到ACME挑战请求，token: {}", token);
+        System.out.println("Received ACME challenge request, token: " + token);
         
         try {
-            // 检查token是否为空
+            // Check if token is empty
             if (token == null || token.trim().isEmpty()) {
-                logger.warn("收到空的token");
+                System.out.println("Received empty token");
                 return ResponseEntity.badRequest().body("Invalid token");
             }
 
-            // 从内存中获取挑战响应
+            // Get challenge response from memory
             String response = getChallengeFromMemory(token);
             
             if (response != null) {
-                logger.info("找到挑战响应，token: {}", token);
+                System.out.println("Found challenge response, token: " + token);
                 return ResponseEntity.ok(response);
             }
 
-            logger.warn("未找到挑战响应，token: {}", token);
+            System.out.println("Challenge response not found, token: " + token);
             return ResponseEntity.notFound().build();
 
         } catch (Exception e) {
-            logger.error("处理ACME挑战时发生错误，token: {}", token, e);
+            System.out.println("Error processing ACME challenge, token: " + token + ", error: " + e.getMessage());
             return ResponseEntity.internalServerError()
                     .body("Error processing ACME challenge: " + e.getMessage());
         }
     }
 
     /**
-     * 从内存读取挑战响应
+     * Get challenge response from memory
      */
     private String getChallengeFromMemory(String token) {
-        // 检查是否过期
+        // Check if expired
         Long expiryTime = challengeExpiry.get(token);
         if (expiryTime != null && System.currentTimeMillis() > expiryTime) {
-            logger.info("挑战响应已过期，删除token: {}", token);
+            System.out.println("Challenge response expired, removing token: " + token);
             challengeResponses.remove(token);
             challengeExpiry.remove(token);
             return null;
@@ -86,21 +82,21 @@ public class AcmeChallengeController {
     }
 
     /**
-     * 添加挑战响应到内存
+     * Add challenge response to memory
      * 
-     * @param token 挑战令牌
-     * @param response 挑战响应内容
-     * @return 操作结果
+     * @param token Challenge token
+     * @param response Challenge response content
+     * @return Operation result
      */
     @PostMapping("/{token}")
     public ResponseEntity<String> addChallengeResponse(
             @PathVariable String token,
             @RequestBody String response) {
         
-        logger.info("添加挑战响应，token: {}", token);
+        System.out.println("Adding challenge response, token: " + token);
         
         try {
-            // 验证输入
+            // Validate input
             if (token == null || token.trim().isEmpty()) {
                 return ResponseEntity.badRequest().body("Token cannot be empty");
             }
@@ -109,61 +105,61 @@ public class AcmeChallengeController {
                 return ResponseEntity.badRequest().body("Response cannot be empty");
             }
 
-            // 存储挑战响应
+            // Store challenge response
             challengeResponses.put(token, response.trim());
             
-            // 设置过期时间
+            // Set expiry time
             long expiryTime = System.currentTimeMillis() + challengeExpiryMs;
             challengeExpiry.put(token, expiryTime);
             
-            logger.info("挑战响应添加成功，token: {}, 过期时间: {}", token, expiryTime);
+            System.out.println("Challenge response added successfully, token: " + token + ", expiry: " + expiryTime);
             return ResponseEntity.ok("Challenge response added for token: " + token);
             
         } catch (Exception e) {
-            logger.error("添加挑战响应时发生错误，token: {}", token, e);
+            System.out.println("Error adding challenge response, token: " + token + ", error: " + e.getMessage());
             return ResponseEntity.internalServerError()
                     .body("Error adding challenge response: " + e.getMessage());
         }
     }
 
     /**
-     * 删除挑战响应
+     * Remove challenge response
      * 
-     * @param token 挑战令牌
-     * @return 操作结果
+     * @param token Challenge token
+     * @return Operation result
      */
     @DeleteMapping("/{token}")
     public ResponseEntity<String> removeChallengeResponse(@PathVariable String token) {
-        logger.info("删除挑战响应，token: {}", token);
+        System.out.println("Removing challenge response, token: " + token);
         
         try {
             boolean removed = challengeResponses.remove(token) != null;
             challengeExpiry.remove(token);
             
             if (removed) {
-                logger.info("挑战响应删除成功，token: {}", token);
+                System.out.println("Challenge response removed successfully, token: " + token);
                 return ResponseEntity.ok("Challenge response removed for token: " + token);
             } else {
-                logger.warn("挑战响应不存在，token: {}", token);
+                System.out.println("Challenge response not found, token: " + token);
                 return ResponseEntity.notFound().build();
             }
             
         } catch (Exception e) {
-            logger.error("删除挑战响应时发生错误，token: {}", token, e);
+            System.out.println("Error removing challenge response, token: " + token + ", error: " + e.getMessage());
             return ResponseEntity.internalServerError()
                     .body("Error removing challenge response: " + e.getMessage());
         }
     }
 
     /**
-     * 批量添加挑战响应
+     * Add batch challenge responses
      * 
-     * @param challenges 挑战响应映射
-     * @return 操作结果
+     * @param challenges Challenge response mapping
+     * @return Operation result
      */
     @PostMapping("/batch")
     public ResponseEntity<String> addBatchChallengeResponses(@RequestBody Map<String, String> challenges) {
-        logger.info("批量添加挑战响应，数量: {}", challenges.size());
+        System.out.println("Adding batch challenge responses, count: " + challenges.size());
         
         try {
             int addedCount = 0;
@@ -182,48 +178,48 @@ public class AcmeChallengeController {
                 }
             }
             
-            logger.info("批量添加完成，成功添加: {} 个挑战响应", addedCount);
+            System.out.println("Batch addition completed, successfully added: " + addedCount + " challenge responses");
             return ResponseEntity.ok("Added " + addedCount + " challenge responses");
             
         } catch (Exception e) {
-            logger.error("批量添加挑战响应时发生错误", e);
+            System.out.println("Error adding batch challenge responses, error: " + e.getMessage());
             return ResponseEntity.internalServerError()
                     .body("Error adding batch challenge responses: " + e.getMessage());
         }
     }
 
     /**
-     * 清空所有挑战响应
+     * Clear all challenge responses
      * 
-     * @return 操作结果
+     * @return Operation result
      */
     @DeleteMapping("/clear")
     public ResponseEntity<String> clearAllChallenges() {
-        logger.info("清空所有挑战响应");
+        System.out.println("Clearing all challenge responses");
         
         try {
             int count = challengeResponses.size();
             challengeResponses.clear();
             challengeExpiry.clear();
             
-            logger.info("清空完成，删除了 {} 个挑战响应", count);
+            System.out.println("Clear completed, removed " + count + " challenge responses");
             return ResponseEntity.ok("Cleared " + count + " challenge responses");
             
         } catch (Exception e) {
-            logger.error("清空挑战响应时发生错误", e);
+            System.out.println("Error clearing challenge responses, error: " + e.getMessage());
             return ResponseEntity.internalServerError()
                     .body("Error clearing challenge responses: " + e.getMessage());
         }
     }
 
     /**
-     * 获取所有挑战响应（调试用）
+     * Get all challenge responses (for debugging)
      * 
-     * @return 所有挑战响应
+     * @return All challenge responses
      */
     @GetMapping("/debug/all")
     public ResponseEntity<Map<String, Object>> getAllChallenges() {
-        logger.info("获取所有挑战响应");
+        System.out.println("Getting all challenge responses");
         
         try {
             Map<String, Object> result = new ConcurrentHashMap<>();
@@ -235,25 +231,25 @@ public class AcmeChallengeController {
             return ResponseEntity.ok(result);
             
         } catch (Exception e) {
-            logger.error("获取挑战响应时发生错误", e);
+            System.out.println("Error getting challenge responses, error: " + e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
 
     /**
-     * 获取挑战响应统计信息
+     * Get challenge response statistics
      * 
-     * @return 统计信息
+     * @return Statistics information
      */
     @GetMapping("/debug/stats")
     public ResponseEntity<Map<String, Object>> getChallengeStats() {
-        logger.info("获取挑战响应统计信息");
+        System.out.println("Getting challenge response statistics");
         
         try {
             long currentTime = System.currentTimeMillis();
             int expiredCount = 0;
             
-            // 计算过期数量
+            // Calculate expired count
             for (Long expiryTime : challengeExpiry.values()) {
                 if (currentTime > expiryTime) {
                     expiredCount++;
@@ -270,15 +266,15 @@ public class AcmeChallengeController {
             return ResponseEntity.ok(stats);
             
         } catch (Exception e) {
-            logger.error("获取统计信息时发生错误", e);
+            System.out.println("Error getting statistics, error: " + e.getMessage());
             return ResponseEntity.internalServerError().build();
         }
     }
 
     /**
-     * 健康检查端点
+     * Health check endpoint
      * 
-     * @return 健康状态
+     * @return Health status
      */
     @GetMapping("/health")
     public ResponseEntity<Map<String, Object>> health() {

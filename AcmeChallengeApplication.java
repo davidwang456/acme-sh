@@ -12,9 +12,9 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 
 /**
- * ACME 挑战验证服务器
+ * ACME Challenge Validation Server
  * 
- * 提供 HTTP-01 挑战验证服务，支持 acme.sh 的域名验证
+ * Provides HTTP-01 challenge validation service for acme.sh domain validation
  */
 @SpringBootApplication
 public class AcmeChallengeApplication {
@@ -24,7 +24,7 @@ public class AcmeChallengeApplication {
     }
 
     /**
-     * 应用启动后的初始化操作
+     * Application initialization after startup
      */
     @Component
     public static class ApplicationInitializer {
@@ -35,16 +35,16 @@ public class AcmeChallengeApplication {
         @EventListener(ApplicationReadyEvent.class)
         public void initializeApplication() {
             try {
-                // 创建必要的目录结构
+                // Create necessary directory structure
                 createDirectories();
                 
-                System.out.println("✅ ACME Challenge Server 启动成功");
-                System.out.println("📁 Webroot 路径: " + webrootPath);
-                System.out.println("🌐 服务地址: http://localhost:80/.well-known/acme-challenge/");
-                System.out.println("🔍 健康检查: http://localhost:80/.well-known/acme-challenge/health");
+                System.out.println("✅ ACME Challenge Server started successfully");
+                System.out.println("📁 Webroot path: " + webrootPath);
+                System.out.println("🌐 Service URL: http://localhost:80/.well-known/acme-challenge/");
+                System.out.println("🔍 Health check: http://localhost:80/.well-known/acme-challenge/health");
                 
             } catch (Exception e) {
-                System.err.println("❌ 应用初始化失败: " + e.getMessage());
+                System.err.println("❌ Application initialization failed: " + e.getMessage());
             }
         }
 
@@ -52,10 +52,10 @@ public class AcmeChallengeApplication {
             Path webroot = Paths.get(webrootPath);
             Path acmeChallenge = webroot.resolve(".well-known").resolve("acme-challenge");
             
-            // 创建目录结构
+            // Create directory structure
             Files.createDirectories(acmeChallenge);
             
-            System.out.println("📂 创建目录: " + acmeChallenge.toAbsolutePath());
+            System.out.println("📂 Created directory: " + acmeChallenge.toAbsolutePath());
         }
     }
 } 
